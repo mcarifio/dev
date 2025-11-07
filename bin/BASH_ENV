@@ -26,6 +26,8 @@ const() {
     source <(printf 'function %s ( echo "%s"; )' "${name}" "${value}"; )
 }
 
+bool() { eval $*; local -i status=$?; echo (( ! status )); return ${status}; }
+
 is.fn() { declare -F "${1:?$(reqarg "bash function name" 1)}" &> /dev/null; }
 
 log() ( : ; )
