@@ -1,0 +1,43 @@
+# skip sourcing this file if sourced before, unchanged and not in base repl
+(( SHLVL > 1 )) && declare -F "sourced-$(realpath -s ${BASH_SOURCE})" &> /dev/null && ! need "$(realpath -s ${BASH_SOURCE})" && return 0
+
+identity() ( echo "${1-}"; )
+
+strict() { set -euo pipefail; shopt -s nullglob extdebug lastpipe globstar "$@"; }
+
+non0() ( for a in "$@"; do ! (( a )) && continue; echo ${a}; break; done; )
+
+at() ( printf '%s@%s:%s' $2 ${3:-main} ${1:-0}; )
+
+reqarg() (
+    local -i status=$(non0 $3 $? 1)
+    strict
+    local -i pos=${2:-1}
+    local arg="${1:-"arg ${pos}"}"
+    caller 1 | read -r line1 subr1 pathname1 || true
+    caller 2 | read -r line2 subr2 pathname2 || true
+    local message="$(printf '%s: missing required %s (pos %d) # caller %s' "$(at ${line1} ${subr1} ${pathname1})" "${arg}" ${pos}  "$(at ${line1} ${subr1} ${pathname1})" )"
+    return $(err "${message}")
+)
+
+const() {
+    local name="${1:?$(reqarg name 1)}"
+    local value="${2:?$(reqarg value 2)}"
+    source <(printf 'function %s ( echo "%s"; )' "${name}" "${value}"; )
+}
+
+is.fn() { declare -F "${1:?$(reqarg "bash function name" 1)}" &> /dev/null; }
+
+log() ( : ; )
+log.debug() ( : ; )
+log.info() ( : ; )
+log.warn() ( : ; )
+log.err() ( : ; )
+warn() ( : ; )
+err() ( : ; )
+inform() ( : ; )
+trace() ( [[ -z "${TRACE}" ]] && return 0; shift; log.info "$@"; )
+trace "sourcing $(realpath -s ${BASH_SOURCE})"
+
+
+
