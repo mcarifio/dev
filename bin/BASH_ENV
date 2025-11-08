@@ -1,13 +1,28 @@
 # skip sourcing this file if sourced before, unchanged and not in base repl
 (( SHLVL > 1 )) && declare -F "sourced-$(realpath -s ${BASH_SOURCE})" &> /dev/null && ! need "$(realpath -s ${BASH_SOURCE})" && return 0
 
+on.exit() (
+    local -i status=$?
+    trap - EXIT ERR
+    strict
+    declare -F finally &> /dev/null && finally
+    (( status )) || return 0
+    local -i frame=0
+    while caller $(( ++frame )) | read -r line subr pathname ; do
+        printf '%s@%s:%d\n' ${subr} $(realpath -s ${pathname}) ${line} >&2
+    done
+    printf 'status => %d\n' ${status} >&2
+    return ${status}
+)
+(( SHLVL > 1 )) && trap on.exit EXIT ERR
+
 identity() ( echo "${1-}"; )
 
-strict() { set -euo pipefail; shopt -s nullglob extdebug lastpipe globstar "$@"; }
+strict() { set -Eeuo pipefail; shopt -s nullglob extdebug lastpipe globstar "$@"; }
 
 non0() ( for a in "$@"; do ! (( a )) && continue; echo ${a}; break; done; )
 
-at() ( printf '%s@%s:%s' $2 ${3:-main} ${1:-0}; )
+at() ( strict; printf '%s@%s:%s' $2 ${3:-main} ${1:-0}; )
 
 reqarg() (
     local -i status=$(non0 $3 $? 1)
@@ -38,7 +53,8 @@ log.err() ( : ; )
 warn() ( : ; )
 err() ( : ; )
 inform() ( : ; )
-trace() ( [[ -z "${TRACE}" ]] && return 0; shift; log.info "$@"; )
+trace() ( [[ -v TRACE ]] && return 0; shift; log.info "$@"; )
+src.fqpn() ( realpath -s "${BASH_SOURCE[1]:-$PWD}"; )
 trace "sourcing $(realpath -s ${BASH_SOURCE})"
 
 
